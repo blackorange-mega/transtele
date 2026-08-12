@@ -85,7 +85,7 @@ MAX_SENSES = 3
 #   Ollama, OpenAI-compatible: http://localhost:11434/v1
 #   A hosted provider        : https://api.example.com/v1  (+ LLM_API_KEY)
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "").strip().rstrip("/")
-LLM_MODEL = os.getenv("LLM_MODEL", "medgemma:27b").strip()
+LLM_MODEL = os.getenv("LLM_MODEL", "translategemma:27b").strip()
 LLM_API_KEY = os.getenv("LLM_API_KEY", "").strip()
 
 # "auto" picks the OpenAI-compatible protocol when the URL already contains

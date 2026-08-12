@@ -73,40 +73,41 @@ Leave it running — the bot polls Telegram and stops with `Ctrl+C`. On startup 
 translation engine it picked:
 
 ```
-Translation engine: medgemma:27b via ollama API at http://localhost:11434 (word lists + messages)
+Translation engine: translategemma:27b via ollama API at http://localhost:11434 (word lists + messages)
 ```
 
 ## Using an LLM translator
 
-### Local — Ollama + medgemma:27b
+### Local — Ollama + translategemma:27b
 
-A model on your own machine needs no account, no key and no quota. Install
-[Ollama](https://ollama.com/download), then pull the model:
+[TranslateGemma](https://ollama.com/library/translategemma) is a translation-only model
+family, and the bot speaks its prompt format. Running it on your own machine needs no
+account, no key and no quota. Install [Ollama](https://ollama.com/download), then pull the
+model:
 
 ```bash
-ollama pull medgemma:27b
+ollama pull translategemma:27b
 ```
 
 Point the bot at it in `.env`:
 
 ```
 LLM_BASE_URL=http://localhost:11434
-LLM_MODEL=medgemma:27b
+LLM_MODEL=translategemma:27b
 ```
 
 That's the whole setup. Restart the bot and check it with `/engine` in Telegram:
 
 ```
-Backend: medgemma:27b (ollama API)
+Backend: translategemma:27b (ollama API)
 Endpoint: http://localhost:11434
 Scope: word lists + messages
 Test: hello → سلام، درود
 ```
 
-`LLM_MODEL` is just the name Ollama knows the model by, so anything you have pulled is a
-drop-in swap — smaller ones (`medgemma:4b`) are far quicker but noticeably weaker, and
-[translategemma](https://ollama.com/library/translategemma) is a translation-only family
-whose prompt format this bot follows.
+The smaller copies are drop-in replacements and a lot lighter — `translategemma:4b` (3.3 GB)
+and `translategemma:12b` (8.1 GB) against 17 GB for the 27B. They translate less accurately;
+see [Notes and limits](#notes-and-limits).
 
 ### Local, but through the OpenAI-compatible API
 
@@ -165,14 +166,21 @@ Produce only the Persian synonyms of the word, all of them, separated by "،", w
 bank
 ```
 
-So a word list comes back with every sense on one line, instead of a single gloss:
+So a word list comes back with every sense on one line, instead of a single gloss. Measured
+on `translategemma:4b`:
 
 ```
 bank
-بانک، مؤسسه مالی، صرافی
+بانک، موسسه مالی، مؤسسه اعتباری، صرافی
+----------------------------------------------------------
+bare
+بی‌ پوشش، عریان، خالی، فاقد
 ----------------------------------------------------------
 spring
-بهار، فنر، چشمه
+بهار، فصل بهار
+----------------------------------------------------------
+good morning
+صبح بخیر، صبح زیبا، صبح آراسته
 ```
 
 The answer is cleaned before it is sent: bullets, `Translation:` prefixes, wrapper quotes and
@@ -246,7 +254,7 @@ All optional, set as environment variables or in `.env`:
 | `BOT_TOKEN`       | —                   | Required. Token from @BotFather.                                         |
 | `CHANNEL_MODE`    | `reply`             | `reply` or `edit`, see above.                                            |
 | `LLM_BASE_URL`    | *(empty)*           | Endpoint of the LLM. Empty = free endpoints only.                        |
-| `LLM_MODEL`       | `medgemma:27b`      | Model name as the endpoint knows it.                                     |
+| `LLM_MODEL`       | `translategemma:27b` | Model name as the endpoint knows it.                                    |
 | `LLM_API_KEY`     | *(empty)*           | Bearer token for a remote provider. Local Ollama needs none.             |
 | `LLM_API`         | `auto`              | `auto`, `ollama` (native `/api/generate`) or `openai` (`/v1/chat/completions`). |
 | `LLM_SCOPE`       | `all`               | `all` = LLM does word lists and messages. `text` = messages only; word lists keep the dictionary lookup. |
@@ -259,11 +267,12 @@ Tunables at the top of `bot.py`: `MAX_WORDS_PER_MESSAGE` (120), `MAX_CONCURRENCY
 
 ## Notes and limits
 
-- **Small models fumble bare vocabulary.** A single word carries no context, so an ambiguous
-  one can be read in the wrong language entirely — `fin` comes back as `پایان`, taken for
-  French, where the dictionary lookup correctly answers `باله`. Sentences are much safer.
-  Two ways out: run a larger model, or set `LLM_SCOPE=text` so word lists keep using the
-  dictionary and the LLM only handles whole messages.
+- **Small copies fumble bare vocabulary.** A single word carries no context, so an ambiguous
+  one can be read in the wrong language entirely: `translategemma:4b` answers `fin` with
+  `پایان`, taking it for French, where the dictionary lookup correctly gives `باله`. It also
+  misses `yawn`. Sentences are much safer. Two ways out: run a bigger copy, or set
+  `LLM_SCOPE=text` so word lists keep using the dictionary and the LLM only handles whole
+  messages.
 - The first LLM request after startup is slow: Ollama has to load the model into memory
   (a few seconds on GPU, up to a minute on CPU). Raise `LLM_TIMEOUT` if it times out.
 - `LLM_CONCURRENCY` above 2 rarely helps with one local model — the requests queue inside
